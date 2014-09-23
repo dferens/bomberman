@@ -8,7 +8,7 @@
 
 (defn menu []
   [:div
-   [:p "Its a menu"]
+   [:p "Its a menu!"]
    [:button {:on-click #(reset! route :game)} "To game"]])
 
 (defn game []

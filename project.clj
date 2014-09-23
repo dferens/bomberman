@@ -6,10 +6,12 @@
                  [org.clojure/clojurescript "0.0-2311"]
                  [figwheel "0.1.4-SNAPSHOT"]
                  [reagent "0.4.2"]]
-  :bower-dependencies [[react]]
 
   :plugins [[lein-cljsbuild "1.0.4-SNAPSHOT"]
-            [lein-figwheel "0.1.4-SNAPSHOT"]]
+            [lein-figwheel "0.1.4-SNAPSHOT"]
+            [lein-bower "0.5.1"]]
+
+  :bower-dependencies [[react "0.9.0"]]
 
   :source-paths ["src"]
 
@@ -17,6 +19,5 @@
                         :source-paths ["src"]
                         :compiler {:output-to "resources/public/js/compiled/bomberman.js"
                                    :output-dir "resources/public/js/compiled/out"
-                                   :preamble ["reagent/react.js"]
                                    :optimizations :none
                                    :pretty-print true}}]})
