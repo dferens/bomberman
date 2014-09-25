@@ -3,6 +3,7 @@ pom.xml
 /lib/
 /classes/
 /target/
+/resources/public/css/
 /resources/public/js/compiled/
 /resources/public/vendor/
 .lein-deps-sum

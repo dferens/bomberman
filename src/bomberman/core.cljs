@@ -5,21 +5,36 @@
 
 (def route (atom :menu))
 
-
 (defn menu []
-  [:div
-   [:p "Its a menu!"]
-   [:button {:on-click #(reset! route :game)} "To game"]])
+  [:div.menu
+   [:table
+    [:tbody
+     [:tr.row1
+      [:td.col1]
+      [:td.col2
+       [:img {:src "img/logo.jpg"}]]
+      [:td.col3]]
+     [:tr.row2
+      [:td.col1]
+      [:td.col2
+       [:div.links
+        [:ul
+         [:li [:button "New game"]]
+         [:li [:button "Highscores"]]
+         [:li [:button "Settings"]]]]]
+      [:td.col3]]
+     ]]])
 
 (defn game []
   [:div
    [:p "Its a game"]
    [:button {:on-click #(reset! route :menu)} "To menu"]])
 
-(defn routes [props]
-  (case @route
-    :menu [menu]
-    :game [game]))
+(defn app [props]
+  [:div.bomberman-game
+   (case @route
+      :menu [menu]
+      :game [game])])
 
 (fw/watch-and-reload)
-(reagent/render-component [routes] (.-body js/document))
+(reagent/render-component [app] (.-body js/document))
