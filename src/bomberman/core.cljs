@@ -24,9 +24,12 @@
          :highscores [highscores]
          :settings [settings])])))
 
-(defn run []
+(defn start []
   (.each ($ ".bomberman-container")
     #(reagent/render-component [app] %2)))
 
-(run)
-(fw/watch-and-reload)
+(defn- stop []
+  (-> ($ ".bomberman-container") .empty))
+
+(start)
+(fw/watch-and-reload :jsload-callback #(do (stop) (start)))
