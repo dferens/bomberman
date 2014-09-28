@@ -1,15 +1,10 @@
 (ns bomberman.views.menu)
 
 
-(def links
-  [[:game "New game"]
-   [:highscores "Highscores"]
-   [:settings "Settings"]])
-
-(defn menu [{:keys [route]}]
+(defn menu [{:keys [route pages]}]
   [:div.menu-page
     [:img {:src "img/logo.jpg"}]
       [:ul
-       (for [[link-route title] links]
+       (for [[link-route title] pages]
          [:li
           [:button {:on-click #(reset! route link-route)} title]])]])

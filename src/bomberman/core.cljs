@@ -12,11 +12,14 @@
   (atom :menu))
 
 (defn app []
-  (let [route (create-route)]
+  (let [pages [[:game "New game"]
+               [:highscores "Highscores"]
+               [:settings "Settings"]]
+        route (create-route)]
     (fn []
       [:div.bomberman-game
        (case @route
-         :menu [menu {:route route}]
+         :menu [menu {:route route :pages pages}]
          :game [game]
          :highscores [highscores]
          :settings [settings])])))
