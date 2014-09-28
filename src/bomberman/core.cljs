@@ -1,42 +1,18 @@
 (ns bomberman.core
   (:require [reagent.core :as reagent :refer [atom]]
             [figwheel.client :as fw :include-macros true]
-            [jayq.core :refer [$]]))
+            [jayq.core :refer [$]]
+            [bomberman.views.menu :refer [menu]]
+            [bomberman.views.game :refer [game]]
+            [bomberman.views.highscores :refer [highscores]]
+            [bomberman.views.settings :refer [settings]]))
 
 
-(defn menu [{:keys [route]}]
-  [:div.menu-page
-   [:table
-    [:tbody
-     [:tr
-      [:td.col1]
-      [:td.col2
-       [:div.menu
-        [:img {:src "img/logo.jpg"}]
-        [:ul
-         (for [[link-route title] [[:game "New game"]
-                                   [:highscores "Highscores"]
-                                   [:settings "Settings"]]]
-           [:li
-            [:button {:on-click #(reset! route link-route)} title]])
-         ]]]
-      [:td.col3]]]]])
-
-(defn game []
-  [:div
-   [:p "Its a game"]
-   [:button "To menu"]])
-
-(defn highscores []
-  [:div
-   [:p "Highscores page"]])
-
-(defn settings []
-  [:div
-   [:p "Settings page"]])
+(defn- create-route []
+  (atom :menu))
 
 (defn app []
-  (let [route (atom :menu)]
+  (let [route (create-route)]
     (fn []
       [:div.bomberman-game
        (case @route
