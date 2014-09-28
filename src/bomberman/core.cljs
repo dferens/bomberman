@@ -9,22 +9,21 @@
   (reset! route to))
 
 (defn menu []
-  [:div.menu
+  [:div.menu-page
    [:table
     [:tbody
-     [:tr.row1
+     [:tr
       [:td.col1]
       [:td.col2
-       [:img {:src "img/logo.jpg"}]]
-      [:td.col3]]
-     [:tr.row2
-      [:td.col1]
-      [:td.col2
-       [:div.links
+       [:div.menu
+        [:img {:src "img/logo.jpg"}]
         [:ul
-         [:li [:button {:on-click #(switch-page :game)} "New game"]]
-         [:li [:button {:on-click #(switch-page :highscores)} "Highscores"]]
-         [:li [:button {:on-click #(switch-page :settings)} "Settings"]]]]]
+         (for [[route title] [[:game "New game"]
+                              [:highscores "Highscores"]
+                              [:settings "Settings"]]]
+           [:li
+            [:button {:on-click #(switch-page route)} title]])
+         ]]]
       [:td.col3]]
      ]]])
 

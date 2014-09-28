@@ -8,31 +8,43 @@ body
   background-color: #eee
 
 .bomberman-game
-  background-color: white
+  .menu-page
+    width: 100%
+    height: 100%
 
-  .menu
-    .col1, .col2, .col3
+    table
+      width: inherit
+      height: inherit
+
+    .col1, .col3
       width: 30%
 
-    .row1
-      height: 200px
+    .menu
+      text-align: center
+      background-color: white
+      box-shadow: 10px 10px 5px rgba(136, 136, 136, 0.1)
 
-    .row2
-      .links
-        text-align: center
+      img
+        padding: 30px
+
+      ul
+        padding: 0
+        margin: 0
+        list-style: none
 
         li
-          height: 3em
-          list-style-type: none
-
           button
             font-size: 1.5em
             font-family: "Roboto Slab"
             border: none
             background: none
             outline: none
+            padding: 5px
 
             &:hover
               cursor: pointer
               text-shadow: 2px 2px #B4B4B4
+
+          &:last-child button
+            margin-bottom: 10px
 
