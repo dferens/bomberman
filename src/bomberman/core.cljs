@@ -9,7 +9,7 @@
 
 
 (defn- create-route []
-  (atom :menu))
+  (atom :game))
 
 (defn app []
   (let [pages [[:game "New game"]

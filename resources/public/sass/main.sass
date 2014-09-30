@@ -36,3 +36,25 @@ body
         &:last-child button
           margin-bottom: 10px
 
+  .game-page
+    .board
+      overflow-x: hidden
+
+      .board-row
+        text-align: left
+        width: 999999px
+        overflow: hidden
+
+        .cell
+          width: 50px
+          height: 50px
+          display: inline-block
+
+          &.empty
+            background-color: #ddd
+
+          &.boundary
+            background-color: black
+
+          &.obstacle
+            background-color: grey
