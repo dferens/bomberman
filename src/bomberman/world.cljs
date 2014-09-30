@@ -1,4 +1,5 @@
-(ns bomberman.world)
+(ns bomberman.world
+  (:require [reagent.core :as reagent :refer [atom]]))
 
 (def cell-types
   [:. ; empty space
@@ -11,6 +12,9 @@
 (defrecord Map [cells])
 (defrecord World [map])
 
+(defn- create-cell [type]
+  (atom (->Cell type)))
+
 (defn- gen-map [obstacle-columns obstacle-rows]
   (let [inner-width (+ 1 (* 2 obstacle-columns))
         inner-height (+ 1 (* 2 obstacle-rows))
@@ -18,21 +22,21 @@
     (->Map
       (concat
         ; Top obstacle row
-        [(map #(->Cell :boundary) (range total-width))]
+        [(map #(create-cell :boundary) (range total-width))]
 
         (for [row-i (range inner-height)
               :let [is-obstacle-row (odd? row-i)]]
            (concat
-             [(->Cell :boundary)]
+             [(create-cell :boundary)]
              (for [col-i (range inner-width)
                    :let [is-obstacle-col (odd? col-i)]]
                (if (and is-obstacle-col is-obstacle-row)
-                 (->Cell :obstacle)
-                 (->Cell :.)))
-             [(->Cell :boundary)]))
+                 (create-cell :obstacle)
+                 (create-cell :.)))
+             [(create-cell :boundary)]))
 
         ; Bottom obstacle row
-        [(map #(->Cell :boundary) (range total-width))]))))
+        [(map #(create-cell :boundary) (range total-width))]))))
 
 (defn gen-world []
   (->World (gen-map 9 4)))
