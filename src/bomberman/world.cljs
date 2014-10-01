@@ -1,20 +1,21 @@
 (ns bomberman.world
-  (:require [reagent.core :as reagent :refer [atom]]))
+  (:require [cljs.core.async :refer []]
+            [reagent.core :as reagent :refer [atom]])
+  (:require-macros [cljs.core.async.macros :refer [go]]))
 
-(def cell-types
-  [:. ; empty space
-   :obstacle ; can not be destroyed
-   :boundary ; map borders
-   :brick ; destroyable blocks
-   ])
+
+(def DIRECTIONS
+  {:left [-1 0] :right [1 0]
+   :top [0 -1] :bottom [0 1]})
 
 (defprotocol WorldProtocol
-  (move-player! [this direction]))
+  (move-player! [this direction])
+  (run-game-loop! [this input-chan]))
 
 (defprotocol PlayerProtocol
   (move [this direction]))
 
-(defrecord Cell [type])
+(defrecord Cell [type is-obstacle])
 (defrecord Map [cells])
 (defrecord Player [pos lives powerups]
   PlayerProtocol
@@ -28,10 +29,21 @@
   WorldProtocol
   (move-player!
     [this delta-vec]
-    (swap! player move delta-vec)))
+    (swap! player move delta-vec))
+  (run-game-loop!
+    [this input-chan]
+    (go
+      (loop [direction (<! input-chan)]
+        (move-player! this (direction DIRECTIONS))
+        (recur (<! input-chan))))))
 
 (defn- create-cell [type]
-  (atom (->Cell type)))
+  (let [params (case type
+                :empty {:obstacle false}
+                :boundary {:obstacle true}
+                :brick {:obstacle true}
+                :obstacle {:obstacle true})]
+  (atom (->Cell type (:obstacle params)))))
 
 (defn- create-player [pos-x pos-y lives]
   (atom (->Player [pos-x pos-y]
@@ -55,7 +67,7 @@
                    :let [is-obstacle-col (odd? col-i)]]
                (if (and is-obstacle-col is-obstacle-row)
                  (create-cell :obstacle)
-                 (create-cell :.)))
+                 (create-cell :empty)))
              [(create-cell :boundary)]))
 
         ; Bottom obstacle row
