@@ -29,7 +29,8 @@
     #(reagent/render-component [app] %2)))
 
 (defn- stop []
-  (-> ($ ".bomberman-container") .empty))
+  (.each ($ ".bomberman-container")
+    #(reagent/unmount-component-at-node %2)))
 
 (start)
 (fw/watch-and-reload :jsload-callback #(do (stop) (start)))
