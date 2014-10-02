@@ -27,5 +27,6 @@
                         :source-paths ["src"]
                         :compiler {:output-to "resources/public/js/compiled/bomberman.js"
                                    :output-dir "resources/public/js/compiled/out"
-                                   :optimizations :none}}]}
+                                   :optimizations :none
+                                   :source-map "resources/public/js/compiled/bomberman.js.map"}}]}
   :figwheel {:css-dirs ["resources/public/css"]})
