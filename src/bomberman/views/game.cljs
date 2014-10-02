@@ -5,10 +5,10 @@
             [jayq.core :refer [$ bind on]]
             [bomberman.world :as world]))
 
-(def CELL-SIZE-PX 50)
+(def UNIT-SIZE-PX 50)
 
-(defn- axis->pixels [axis-value]
-  (* axis-value CELL-SIZE-PX))
+(defn- units->pixels [units]
+  (* units UNIT-SIZE-PX))
 
 (defn- board-cell-view [cell-atom]
   (let [cell @cell-atom
@@ -32,8 +32,10 @@
 
 (defn- player-view [player-atom]
   (let [player @player-atom
-        [x y] (map axis->pixels (:pos player))]
-    [:div.player {:style {:top y :left x}}]))
+        [x y] (map units->pixels (:pos player))]
+    [:div.player {:style {:top y :left x
+                          :width (-> player :width units->pixels)
+                          :height (-> player :height units->pixels)}}]))
 
 (defn- setup-bindings [input-chan]
   (let [button-key-codes {37 :left 39 :right
@@ -51,7 +53,7 @@
     (setup-bindings input-chan)
     (bomberman.world/run-game-loop! world input-chan)
     (fn []
-      (let [cells (-> world :map :cells)]
+      (let [cells (-> world :game-map :cells)]
         [:div.game-page
          [:div.window
           [stats-view world]
