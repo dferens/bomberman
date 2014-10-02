@@ -2,7 +2,7 @@
   (:require [cljs.core.async :refer [<! >! timeout chan put!]]
             [reagent.core :as reagent]
             [jayq.util :refer [log]]
-            [jayq.core :refer [$ bind on]]
+            [jayq.core :refer [$ bind on find focus]]
             [bomberman.world :as world]))
 
 (def UNIT-SIZE-PX 50)
@@ -35,25 +35,29 @@
                           :width (-> player :width units->pixels)
                           :height (-> player :height units->pixels)}}]))
 
-(defn- setup-bindings [input-chan]
-  (let [button-key-codes {37 :left 39 :right
-                          38 :top 40 :bottom}]
-    (on ($ "body") :keydown
-      (fn [event]
-        (let [key-code (.-keyCode event)
-              direction (get button-key-codes key-code)]
-          (when direction
-            (put! input-chan direction)))))))
+(defn- keyboard-buttons-collector
+  [input-chan]
+  (let [button-key-codes {37 :left 39 :right 38 :top 40 :bottom}]
+    [:input.keyboard-input
+     {:type :text
+      :style {:opacity 0 :position :absolute :top "-9999px"}
+      :on-key-down (fn [event]
+                    (let [key-code (.-keyCode event)
+                          direction (get button-key-codes key-code)]
+                      (when direction (put! input-chan direction))))}]))
 
 (defn game []
   (let [world-atom (bomberman.world/create)
         input-chan (chan)]
-    (setup-bindings input-chan)
     (bomberman.world/run-game-loop! world-atom input-chan)
     (fn []
       (let [cells (-> @world-atom :game-map :cells)]
         [:div.game-page
+         {:on-click #(-> ($ (.-currentTarget %))
+                         (find :.keyboard-input)
+                         (.focus))}
          [:div.window
+          [keyboard-buttons-collector input-chan]
           [stats-view world-atom]
           [:div.board
            [player-view {:player (:player @world-atom)}]

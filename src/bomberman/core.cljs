@@ -25,8 +25,9 @@
          :settings [settings])])))
 
 (defn start []
-  (.each ($ ".bomberman-container")
-    #(reagent/render-component [app] %2)))
+  (let [container-selector ".bomberman-container"]
+    (.each ($ container-selector)
+      #(reagent/render-component [app] %2))))
 
 (defn- stop []
   (.each ($ ".bomberman-container")
