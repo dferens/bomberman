@@ -10,9 +10,8 @@
 (defn- units->pixels [units]
   (* units UNIT-SIZE-PX))
 
-(defn- board-cell-view [cell-atom]
-  (let [cell @cell-atom
-        css-class (case (:type cell)
+(defn- board-cell-view [cell]
+  (let [css-class (case (:type cell)
                     :empty "empty"
                     :obstacle "obstacle"
                     :boundary "boundary")]
@@ -23,16 +22,15 @@
    (for [cell-i (range (count row))]
      ^{:key cell-i} [board-cell-view (nth row cell-i)])])
 
-(defn- stats-view [world]
-  (let [player @(:player world)]
+(defn- stats-view [world-atom]
+  (let [player (:player @world-atom)]
     [:div.header
      [:div.lives "Lives: " (:lives player)]
      [:div.powerups
       [:p.speed "Speed: " (-> player :powerups :speed)]]]))
 
-(defn- player-view [player-atom]
-  (let [player @player-atom
-        [x y] (map units->pixels (:pos player))]
+(defn- player-view [{:keys [player]}]
+  (let [[x y] (map units->pixels (:pos player))]
     [:div.player {:style {:top y :left x
                           :width (-> player :width units->pixels)
                           :height (-> player :height units->pixels)}}]))
@@ -48,17 +46,17 @@
             (put! input-chan direction)))))))
 
 (defn game []
-  (let [world (bomberman.world/create)
+  (let [world-atom (bomberman.world/create)
         input-chan (chan)]
     (setup-bindings input-chan)
-    (bomberman.world/run-game-loop! world input-chan)
+    (bomberman.world/run-game-loop! world-atom input-chan)
     (fn []
-      (let [cells (-> world :game-map :cells)]
+      (let [cells (-> @world-atom :game-map :cells)]
         [:div.game-page
          [:div.window
-          [stats-view world]
+          [stats-view world-atom]
           [:div.board
-           [player-view (:player world)]
+           [player-view {:player (:player @world-atom)}]
            (for [cell-row-i (range (count cells))]
              ^{:key cell-row-i} [board-row-view (nth cells cell-row-i)])]
           [:div.footer]]]))))

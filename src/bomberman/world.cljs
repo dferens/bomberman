@@ -22,11 +22,6 @@
   (get-bounding-box [this])
   (move [this direction delta-time]))
 
-(defprotocol WorldProtocol
-  (get-next-to-cell [this pos direction])
-  (move-player! [this direction delta-time])
-  (run-game-loop! [this input-chan]))
-
 (defrecord Rect [x y width height])
 
 (defrecord Cell [type is-obstacle])
@@ -58,20 +53,21 @@
     (let [speed (-> this :powerups :speed)]
       (assoc this :pos (get-next-pos pos direction delta-time speed)))))
 
-(defrecord World [game-map player]
-  WorldProtocol
-  (move-player!
-    [this direction delta-time]
-    (let [new-player (move @player direction delta-time)
-          cells (get-cells-inside game-map (get-bounding-box new-player))]
-      (when (every? #(not (:is-obstacle (deref %))) cells)
-        (reset! player new-player))))
-  (run-game-loop!
-    [this input-chan]
-    (go
-      (loop [direction (<! input-chan)]
-        (move-player! this direction 0.2)
-        (recur (<! input-chan))))))
+(defrecord World [game-map player])
+
+(defn move-player!
+  [world-atom direction delta-time]
+  (let [new-player (move (:player @world-atom) direction delta-time)
+        cells (get-cells-inside (:game-map @world-atom) (get-bounding-box new-player))]
+    (when (every? #(not (:is-obstacle %)) cells)
+      (swap! world-atom assoc-in [:player] new-player))))
+
+(defn run-game-loop!
+  [world-atom input-chan]
+  (go
+    (loop [direction (<! input-chan)]
+      (move-player! world-atom direction 0.2)
+      (recur (<! input-chan)))))
 
 (defn- create-cell [type]
   (let [params (case type
@@ -79,14 +75,14 @@
                 :boundary {:obstacle true}
                 :brick {:obstacle true}
                 :obstacle {:obstacle true})]
-  (atom (->Cell type (:obstacle params)))))
+  (->Cell type (:obstacle params))))
 
 (defn- create-player [pos-x pos-y lives]
-  (atom (->Player [pos-x pos-y]
-                  lives
-                  {:speed 1.0}
-                  0.45
-                  0.45)))
+  (->Player [pos-x pos-y]
+            lives
+            {:speed 1.0}
+            0.45
+            0.45))
 
 (defn- create-map [obstacle-columns obstacle-rows]
   (let [inner-width (+ 1 (* 2 obstacle-columns))
@@ -112,5 +108,6 @@
         [(map #(create-cell :boundary) (range total-width))]))))
 
 (defn create []
-  (->World (create-map 9 4)
-           (create-player 1.5 1.5 3)))
+  (atom
+    (->World (create-map 9 4)
+             (create-player 1.5 1.5 3))))
