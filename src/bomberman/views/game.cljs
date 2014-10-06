@@ -26,7 +26,7 @@
   (let [player (:player @world-atom)]
     [:div.header
      [:div.lives "Lives: " (:lives player)]
-     [:div.time "Time: " (-> @world-atom (:time) (/ 1000)) " secs"]
+     [:div.ups "Updates per second: " (-> @world-atom :ups)]
      [:div "Last direction: " (-> @world-atom :player :direction (name))]
      [:div.powerups
       [:p.speed "Speed: " (-> player :powerups :speed)]]]))

@@ -56,7 +56,7 @@
     (let [speed (-> this :powerups :speed)]
       (assoc this :pos (get-next-pos pos direction delta-time speed)))))
 
-(defrecord World [game-map player time])
+(defrecord World [game-map player ups time updates])
 
 (defn move-player!
   [world direction delta-time]
@@ -75,19 +75,32 @@
         (move-player! direction delta-time)
         (assoc-in [:player :direction] direction))))
 
+(defn- ups-updater
+  [world delta-time]
+  (if (> (:time world) 1000)
+    (-> world
+        (assoc :ups (/ (:updates world) (/ 1000 (:time world))))
+        (assoc :time 0)
+        (assoc :updates 0))
+    (-> world
+        (update-in [:time] + delta-time)
+        (update-in [:updates] inc))))
+
 (defn- world-updater
   [world delta-time new-direction]
   (-> world
+      (ups-updater delta-time)
       (player-updater delta-time new-direction)))
 
 (defn run-game-loop!
   [world-atom input-chan]
-  (go
-    (loop []
-      (<! (timeout 50))
-      (let [[new-direction _] (alts! [input-chan (timeout 0)])]
-        (swap! world-atom world-updater 30 new-direction)
-        (recur)))))
+  (let [delta-time 20]
+    (go
+      (loop []
+        (<! (timeout delta-time))
+        (let [[new-direction _] (alts! [input-chan (timeout 0)])]
+          (swap! world-atom world-updater delta-time new-direction)
+          (recur))))))
 
 (defn- create-cell [type]
   (let [params (case type
@@ -132,4 +145,6 @@
   (atom
     (->World (create-map 9 4)
              (create-player 1.5 1.5 3)
+             0
+             0
              0)))
