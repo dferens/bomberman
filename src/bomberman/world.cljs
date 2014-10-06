@@ -1,18 +1,21 @@
 (ns bomberman.world
-  (:require [cljs.core.async :refer []]
+  (:require [cljs.core.async :refer [chan <! put! timeout alts!]]
+            [jayq.util :refer [log]]
             [reagent.core :as reagent :refer [atom]])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
 
 (def DIRECTIONS
   {:left [-1 0] :right [1 0]
-   :top [0 -1] :bottom [0 1]})
+   :top [0 -1] :bottom [0 1]
+   :none [0 0]})
 
 (defn get-next-pos
   ([pos direction delta-time]
    (next-pos pos direction delta-time 1))
   ([pos direction delta-time speed]
-    (map #(+ %1 (* %2 delta-time speed)) pos (get DIRECTIONS direction))))
+    (let [delta-time-seconds (/ delta-time 1000)]
+     (map #(+ %1 (* %2 delta-time-seconds speed)) pos (get DIRECTIONS direction)))))
 
 (defprotocol MapProtocol
   (get-cell-at [this pos])
@@ -42,7 +45,7 @@
             y (range start-y end-y)]
         (get-cell-at this [x y])))))
 
-(defrecord Player [pos lives powerups width height]
+(defrecord Player [pos lives powerups width height direction]
   PlayerProtocol
   (get-bounding-box
     [this]
@@ -53,21 +56,38 @@
     (let [speed (-> this :powerups :speed)]
       (assoc this :pos (get-next-pos pos direction delta-time speed)))))
 
-(defrecord World [game-map player])
+(defrecord World [game-map player time])
 
 (defn move-player!
-  [world-atom direction delta-time]
-  (let [new-player (move (:player @world-atom) direction delta-time)
-        cells (get-cells-inside (:game-map @world-atom) (get-bounding-box new-player))]
-    (when (every? #(not (:is-obstacle %)) cells)
-      (swap! world-atom assoc-in [:player] new-player))))
+  [world direction delta-time]
+  (let [new-player (move (:player world) direction delta-time)
+        cells (get-cells-inside (:game-map world) (get-bounding-box new-player))]
+    (if (every? #(not (:is-obstacle %)) cells)
+      (assoc-in world [:player] new-player)
+      world)))
+
+(defn- player-updater
+  [world delta-time new-direction]
+  (let [direction (if (nil? new-direction)
+                    (get-in world [:player :direction])
+                    new-direction)]
+    (-> world
+        (move-player! direction delta-time)
+        (assoc-in [:player :direction] direction))))
+
+(defn- world-updater
+  [world delta-time new-direction]
+  (-> world
+      (player-updater delta-time new-direction)))
 
 (defn run-game-loop!
   [world-atom input-chan]
   (go
-    (loop [direction (<! input-chan)]
-      (move-player! world-atom direction 0.2)
-      (recur (<! input-chan)))))
+    (loop []
+      (<! (timeout 50))
+      (let [[new-direction _] (alts! [input-chan (timeout 0)])]
+        (swap! world-atom world-updater 30 new-direction)
+        (recur)))))
 
 (defn- create-cell [type]
   (let [params (case type
@@ -81,8 +101,9 @@
   (->Player [pos-x pos-y]
             lives
             {:speed 1.0}
-            0.45
-            0.45))
+            0.4
+            0.4
+            :none))
 
 (defn- create-map [obstacle-columns obstacle-rows]
   (let [inner-width (+ 1 (* 2 obstacle-columns))
@@ -110,4 +131,5 @@
 (defn create []
   (atom
     (->World (create-map 9 4)
-             (create-player 1.5 1.5 3))))
+             (create-player 1.5 1.5 3)
+             0)))

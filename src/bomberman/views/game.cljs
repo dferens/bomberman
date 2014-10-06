@@ -26,6 +26,8 @@
   (let [player (:player @world-atom)]
     [:div.header
      [:div.lives "Lives: " (:lives player)]
+     [:div.time "Time: " (-> @world-atom (:time) (/ 1000)) " secs"]
+     [:div "Last direction: " (-> @world-atom :player :direction (name))]
      [:div.powerups
       [:p.speed "Speed: " (-> player :powerups :speed)]]]))
 
@@ -37,18 +39,21 @@
 
 (defn- keyboard-buttons-collector
   [input-chan]
-  (let [button-key-codes {37 :left 39 :right 38 :top 40 :bottom}]
+  (let [buttons-pressed (atom (sorted-set))
+        button-key-codes {37 :left 39 :right 38 :top 40 :bottom}
+        send-button-direction #(put! input-chan (get button-key-codes % :none))
+        send-current-direction #(send-button-direction (first @buttons-pressed))]
     [:input.keyboard-input
      {:type :text
       :style {:opacity 0 :position :absolute :top "-9999px"}
-      :on-key-down (fn [event]
-                    (let [key-code (.-keyCode event)
-                          direction (get button-key-codes key-code)]
-                      (when direction (put! input-chan direction))))}]))
+      :on-key-up #(do (swap! buttons-pressed disj (.-keyCode %))
+                      (send-current-direction))
+      :on-key-down #(do (swap! buttons-pressed conj (.-keyCode %))
+                        (send-current-direction))}]))
 
 (defn game []
   (let [world-atom (bomberman.world/create)
-        input-chan (chan)]
+        input-chan (chan 10)]
     (bomberman.world/run-game-loop! world-atom input-chan)
     (fn []
       (let [cells (-> @world-atom :game-map :cells)]
