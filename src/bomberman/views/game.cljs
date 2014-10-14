@@ -40,16 +40,19 @@
 (defn- keyboard-buttons-collector
   [input-chan]
   (let [buttons-pressed (atom (sorted-set))
-        button-key-codes {37 :left 39 :right 38 :top 40 :bottom}
-        send-button-direction #(put! input-chan (get button-key-codes % :none))
-        send-current-direction #(send-button-direction (first @buttons-pressed))]
+        move-buttons {37 :left 39 :right 38 :top 40 :bottom}
+        get-button-direction #(get move-buttons % :none)
+        send-move-msg #(->> (first @buttons-pressed)
+                            (get-button-direction)
+                            (assoc {:topic :move} :direction)
+                            (put! input-chan))]
     [:input.keyboard-input
      {:type :text
       :style {:opacity 0 :position :absolute :top "-9999px"}
       :on-key-up #(do (swap! buttons-pressed disj (.-keyCode %))
-                      (send-current-direction))
+                      (send-move-msg))
       :on-key-down #(do (swap! buttons-pressed conj (.-keyCode %))
-                        (send-current-direction))}]))
+                        (send-move-msg))}]))
 
 (defn game []
   (let [world-atom (bomberman.world/create)

@@ -54,7 +54,9 @@
   (move
     [this direction delta-time]
     (let [speed (-> this :powerups :speed)]
-      (assoc this :pos (get-next-pos pos direction delta-time speed)))))
+      (-> this
+          (assoc :pos (get-next-pos pos direction delta-time speed))
+          (assoc :direction direction)))))
 
 (defrecord World [game-map player ups time updates])
 
@@ -66,31 +68,23 @@
       (assoc-in world [:player] new-player)
       world)))
 
-(defn- player-updater
-  [world delta-time new-direction]
-  (let [direction (if (nil? new-direction)
-                    (get-in world [:player :direction])
-                    new-direction)]
-    (-> world
-        (move-player! direction delta-time)
-        (assoc-in [:player :direction] direction))))
-
-(defn- ups-updater
-  [world delta-time]
-  (if (> (:time world) 1000)
-    (-> world
-        (assoc :ups (/ (:updates world) (/ 1000 (:time world))))
-        (assoc :time 0)
-        (assoc :updates 0))
-    (-> world
-        (update-in [:time] + delta-time)
-        (update-in [:updates] inc))))
-
 (defn- world-updater
-  [world delta-time new-direction]
-  (-> world
-      (ups-updater delta-time)
-      (player-updater delta-time new-direction)))
+  [world delta-time msg]
+  (as-> world $
+        ; Update UPS value
+        (if (> (:time $) 1000)
+          (-> $
+              (assoc :ups (/ (:updates $) (/ 1000 (:time $))))
+              (merge {:time 0 :updates 0}))
+          (-> $
+              (update-in [:time] + delta-time)
+              (update-in [:updates] inc)))
+
+        ; Update player
+        (let [new-direction (if (= (:topic msg) :move)
+                              (:direction msg)
+                              (get-in $ [:player :direction]))]
+          (move-player! $ new-direction delta-time))))
 
 (defn run-game-loop!
   [world-atom input-chan]
@@ -98,8 +92,8 @@
     (go
       (loop []
         (<! (timeout delta-time))
-        (let [[new-direction _] (alts! [input-chan (timeout 0)])]
-          (swap! world-atom world-updater delta-time new-direction)
+        (let [[msg _] (alts! [input-chan (timeout 0)])]
+          (swap! world-atom world-updater delta-time msg)
           (recur))))))
 
 (defn- create-cell [type]
