@@ -41,18 +41,22 @@
   [input-chan]
   (let [buttons-pressed (atom (sorted-set))
         move-buttons {37 :left 39 :right 38 :top 40 :bottom}
-        get-button-direction #(get move-buttons % :none)
-        send-move-msg #(->> (first @buttons-pressed)
-                            (get-button-direction)
-                            (assoc {:topic :move} :direction)
-                            (put! input-chan))]
+        action-buttons {32 :place-bomb}]
     [:input.keyboard-input
      {:type :text
       :style {:opacity 0 :position :absolute :top "-9999px"}
-      :on-key-up #(do (swap! buttons-pressed disj (.-keyCode %))
-                      (send-move-msg))
-      :on-key-down #(do (swap! buttons-pressed conj (.-keyCode %))
-                        (send-move-msg))}]))
+      :on-key-up #(let [key-code (.-keyCode %)]
+                    (when (contains? move-buttons key-code)
+                      (do (swap! buttons-pressed disj key-code)
+                          (let [direction (move-buttons (first @buttons-pressed))
+                                direction (or direction :none)]
+                              (put! input-chan {:topic :move :direction direction})))))
+      :on-key-down #(let [key-code (.-keyCode %)]
+                      (if (contains? move-buttons key-code)
+                        (do (swap! buttons-pressed conj key-code)
+                            (let [direction (move-buttons (first @buttons-pressed))]
+                              (put! input-chan {:topic :move :direction direction})))
+                        (put! input-chan {:topic (get action-buttons key-code)})))}]))
 
 (defn game []
   (let [world-atom (bomberman.world/create)

@@ -58,7 +58,9 @@
           (assoc :pos (get-next-pos pos direction delta-time speed))
           (assoc :direction direction)))))
 
-(defrecord World [game-map player ups time updates])
+(defrecord Bomb [x y])
+
+(defrecord World [game-map player bombs ups time updates])
 
 (defn move-player!
   [world direction delta-time]
@@ -68,23 +70,32 @@
       (assoc-in world [:player] new-player)
       world)))
 
+(defn- place-bomb!
+  [world]
+  (log "placed bomb")
+  world)
+
 (defn- world-updater
   [world delta-time msg]
-  (as-> world $
-        ; Update UPS value
-        (if (> (:time $) 1000)
-          (-> $
-              (assoc :ups (/ (:updates $) (/ 1000 (:time $))))
-              (merge {:time 0 :updates 0}))
-          (-> $
-              (update-in [:time] + delta-time)
-              (update-in [:updates] inc)))
-
-        ; Update player
-        (let [new-direction (if (= (:topic msg) :move)
+  (let [new-direction (if (= (:topic msg) :move)
                               (:direction msg)
-                              (get-in $ [:player :direction]))]
-          (move-player! $ new-direction delta-time))))
+                              (get-in world [:player :direction]))]
+   (as-> world $
+          ; Update UPS value
+          (if (> (:time $) 1000)
+            (-> $
+                (assoc :ups (/ (:updates $) (/ 1000 (:time $))))
+                (merge {:time 0 :updates 0}))
+            (-> $
+                (update-in [:time] + delta-time)
+                (update-in [:updates] inc)))
+
+          ; Update player
+          (move-player! $ new-direction delta-time)
+
+          (case (:topic msg)
+            :place-bomb (place-bomb! $)
+            $))))
 
 (defn run-game-loop!
   [world-atom input-chan]
@@ -139,6 +150,7 @@
   (atom
     (->World (create-map 9 4)
              (create-player 1.5 1.5 3)
+             []
              0
              0
              0)))
