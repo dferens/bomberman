@@ -9,3 +9,6 @@ pom.xml
 .lein-deps-sum
 .lein-repl-history
 .lein-plugins/
+.DS_Store
+.idea
+*.iml
