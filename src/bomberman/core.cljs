@@ -2,14 +2,14 @@
   (:require [reagent.core :as reagent :refer [atom]]
             [figwheel.client :as fw :include-macros true]
             [jayq.core :refer [$]]
-            [bomberman.views.menu :refer [menu]]
-            [bomberman.views.game :refer [game]]
-            [bomberman.views.highscores :refer [highscores]]
-            [bomberman.views.settings :refer [settings]]))
+            [bomberman.views.menu]
+            [bomberman.views.game]
+            [bomberman.views.highscores]
+            [bomberman.views.settings]))
 
 
 (defn- create-route []
-  (atom :game))
+  (atom :menu))
 
 (defn app []
   (let [pages [[:game "New game"]
@@ -19,10 +19,10 @@
     (fn []
       [:div.bomberman-game
        (case @route
-         :menu [menu {:route route :pages pages}]
-         :game [game]
-         :highscores [highscores]
-         :settings [settings])])))
+         :menu [bomberman.views.menu/menu {:route route :pages pages}]
+         :game [bomberman.views.game/game ]
+         :highscores [bomberman.views.highscores/highscores]
+         :settings [bomberman.views.settings/settings])])))
 
 (defn start []
   (let [container-selector ".bomberman-container"]
