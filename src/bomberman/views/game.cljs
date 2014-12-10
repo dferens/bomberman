@@ -51,7 +51,6 @@
   (let [player (:player @world-atom)]
     [:div.header
      [:div.lives "Lives: " (get-in player [:powerups :lives])]
-     [:div "Last direction: " (str (:direction player))]
      [:div.powerups]]))
 
 

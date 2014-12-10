@@ -100,7 +100,8 @@ Example:
   [{:keys [player gamemap] :as world} direction]
   {:pre (contains? directions direction)}
   (let [dxdy (map (partial * (:speed player)) (directions direction))
-        new-player (update-in player [:pos] #(map + % dxdy))
+        new-player (assoc player :pos (map + (:pos player) dxdy)
+                                 :direction direction)
         top-left (:pos new-player)
         bottom-right (map + top-left (:size player))
         min-col (int (first top-left))
