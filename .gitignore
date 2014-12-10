@@ -8,6 +8,7 @@ pom.xml
 /resources/public/vendor/
 .lein-deps-sum
 .lein-repl-history
+.nrepl-port
 .lein-plugins/
 .DS_Store
 .idea
