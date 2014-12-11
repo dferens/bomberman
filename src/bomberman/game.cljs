@@ -7,6 +7,7 @@
 (def commands
   #{:init
     :move
+    :place-bomb
     :step})
 
 (def responses
@@ -26,6 +27,7 @@
         (case (:topic command)
           :init (reset! world-atom (bomberman.world/create))
           :move (swap! world-atom bomberman.world/move-player (:direction command))
+          :place-bomb (swap! world-atom bomberman.world/place-bomb)
           :step (do
                   (swap! world-atom bomberman.world/step (:delta-time command))
                   (put! responses-chan {:topic :world-update
@@ -50,3 +52,7 @@
 (defn move!
   [game direction]
   (put! (:commands-chan game) {:topic :move :direction direction}))
+
+(defn place-bomb!
+  [game]
+  (put! (:commands-chan game) {:topic :place-bomb}))

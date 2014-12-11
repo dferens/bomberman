@@ -1,4 +1,5 @@
-(ns bomberman.world)
+(ns bomberman.world
+  (:require [bomberman.collisions :as collisions :refer [collides?]]))
 
 
 ;; Constants
@@ -12,29 +13,63 @@
    :none [0 0]})
 
 (def cell-types
-  #{:empty :obstacle})
+  #{:empty
+    :obstacle
+    :boundary})
+
+(def cell-size [1 1])
+(def player-size [0.7 0.7])
+(def bomb-size [0.8 0.8])
 
 
-;; Builders
+(defn- transpose
+  "Moves point with given position in direction with given speed
+  Returns new pos"
+  [pos direction speed]
+  (let [dxy (map (partial * speed) (directions direction))]
+    (map + pos dxy)))
 
-(defrecord Cell [x y type])
-(defrecord Player [pos size direction speed powerups])
 
-(defn- create-cell [cell-type x y]
+;; Data types
+
+(defrecord Cell [pos type]
+  collisions/ICollidable
+  (get-bounding-box [this]
+    (collisions/create-bounding-box pos cell-size)))
+
+(defrecord Bomb [pos size collides]
+  collisions/ICollidable
+  (get-bounding-box [this]
+    (collisions/create-bounding-box pos size)))
+
+(defrecord Player [pos size direction speed powerups]
+  collisions/ICollidable
+  (get-bounding-box [this]
+    (collisions/create-bounding-box pos size)))
+
+(defrecord World [player cells bombs])
+
+(defn- create-cell [cell-type col-i row-i]
   "Creates cell instance with given type & coordinates"
   {:pre (contains? cell-types cell-type)}
-  (->Cell x
-          y
-          cell-type))
+  (->Cell
+    [(+ col-i (/ (first cell-size) 2))
+     (+ row-i (/ (second cell-size) 2))]
+    cell-type))
+
+(defn- create-bomb [pos]
+  (->Bomb
+    pos
+    bomb-size
+    false))
 
 (defn- create-player
   "Creates player record where
   @pos - [x y]
-  @size - [w h]
-  "
-  [pos size direction speed powerups]
+  @size - [w h]"
+  [pos direction speed powerups]
   (->Player pos
-            size
+            player-size
             direction
             speed
             powerups))
@@ -76,41 +111,59 @@ Example:
       ; Bottom obstacle row
       [(map #(create-cell :boundary % total-height) (range total-width))])))
 
-
 (defn create
   "Creates world instance"
   []
-  {:gamemap (gen-map-cells 4 9)
-   :player (create-player [1.0 1.0]
-                          [0.7 0.7]
-                          :bottom
-                          0.06
-                          {:lives 4})})
+  (->World
+    (create-player [1.5 1.5]
+                   :bottom
+                   0.06
+                   {:lives 4})
+    (gen-map-cells 4 9)
+    []))
 
 
 ;; Updaters
 
-(defn step [world delta-time]
-  ; TODO: update game entities
-  world)
+(defn- update-bombs-collides
+  [{:keys [bombs player] :as world}]
+  (loop [bomb-i 0
+         old-world world]
+    (let [bomb (get bombs bomb-i)]
+      (if (nil? bomb)
+        old-world
+        (if (and (false? (:collides bomb))
+                 (not (collides? player bomb)))
+          (recur
+            (inc bomb-i)
+            (update-in old-world [:bombs bomb-i :collides] not))
+          (recur
+            (inc bomb-i)
+            old-world))))))
 
+(defn step
+  [world delta-time]
+  (-> world
+      (update-bombs-collides)))
 
 (defn move-player
   "Moves player inside world in given direction, returns new world"
-  [{:keys [player gamemap] :as world} direction]
+  [{:keys [player] :as world} direction]
   {:pre (contains? directions direction)}
-  (let [dxdy (map (partial * (:speed player)) (directions direction))
-        new-player (assoc player :pos (map + (:pos player) dxdy)
-                                 :direction direction)
-        top-left (:pos new-player)
-        bottom-right (map + top-left (:size player))
-        min-col (int (first top-left))
-        min-row (int (second top-left))
-        max-col (Math/ceil (first bottom-right))
-        max-row (Math/ceil (second bottom-right))
-        collided-cells (for [row-i (range min-row max-row)
-                             col-i (range min-col max-col)]
-                         (-> gamemap (nth row-i) (nth col-i)))]
-    (if (every? #(= :empty (:type %)) collided-cells)
+  (let [new-player (-> player
+                       (update-in [:pos] transpose direction (:speed player))
+                       (assoc :direction direction))
+        bombs (filter :collides (:bombs world))
+        cells (->>(apply concat (:cells world))
+                  (filter #(not= :empty (:type %))))
+        bodies (->> (concat bombs cells)
+                    (filter (partial collides? new-player)))]
+    (if (empty? bodies)
       (assoc world :player new-player)
       world)))
+
+(defn place-bomb
+  [world]
+  (let [bomb-pos (get-in world [:player :pos])
+        bomb (create-bomb bomb-pos)]
+    (update-in world [:bombs] conj bomb)))

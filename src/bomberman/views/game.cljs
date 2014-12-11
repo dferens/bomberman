@@ -20,6 +20,7 @@
    32 :space})
 
 (def move-buttons #{:left :right :top :bottom})
+(def place-bomb-button :space)
 
 (defn- units->pixels [units]
   (* units pixels-per-unit))
@@ -32,19 +33,31 @@
         [x y] (map units->pixels pos)
         [width height] (map units->pixels size)]
     [:div.player
-     {:style {:top y
-              :left x
+     {:style {:top (- y (/ height 2))
+              :left (- x (/ width 2))
               :width width
               :height height}}]))
 
+(defn- bombs-view [world-atom]
+  [:div.bombs
+   (for [{:keys [pos size]} (:bombs @world-atom)
+         :let [[x y] (map units->pixels pos)
+               [width height] (map units->pixels size)]]
+     [:div.bomb
+      {:style {:top (- y (/ height 2))
+               :left (- x (/ width 2))
+               :width width
+               :height height}}])])
+
 (defn- board-view [world-atom]
-  (let [gamemap (:gamemap @world-atom)]
+  (let [cells (:cells @world-atom)]
     [:div.board
      [player-view world-atom]
-     (for [row-i (range (count gamemap))]
+     [bombs-view world-atom]
+     (for [row-i (range (count cells))]
        ^{:key row-i}
        [:div.board-row
-        (for [{:keys [x type]} (nth gamemap row-i)]
+        (for [{:keys [x type]} (nth cells row-i)]
           ^{:key x} [:div.cell {:class (name type)}])])]))
 
 (defn- stats-view [world-atom]
@@ -82,6 +95,7 @@
             (if-not (nil? button)
               (cond
                 (contains? move-buttons button) (swap! move-buttons-stack conj button)
+                (= button place-bomb-button) (bomberman.game/place-bomb! game)
                 :else (log (str "Key pressed:" (.-keyCode event))))))))
     (on ($ "body") :keyup
         (fn [event]
