@@ -1,16 +1,9 @@
 (ns bomberman.world
-  (:require [bomberman.collisions :as collisions :refer [collides?]]))
+  (:require [bomberman.collisions :refer [collides? ICollidable create-box]]
+            [bomberman.math :refer [transpose]]))
 
 
 ;; Constants
-
-(def directions
-  "Available directions"
-  {:left [-1 0]
-   :right [1 0]
-   :top [0 -1]
-   :bottom [0 1]
-   :none [0 0]})
 
 (def cell-types
   "Available cell types"
@@ -23,30 +16,22 @@
 (def bomb-size [0.8 0.8])
 (def bomb-detonate-seconds 3)
 
-
-(defn- transpose
-  "Moves point with given position in direction with given speed
-  Returns new pos"
-  [pos direction speed]
-  (let [dxy (map (partial * speed) (directions direction))]
-    (map + pos dxy)))
-
 ;; Data types
 
 (defrecord Cell [pos type]
-  collisions/ICollidable
+  ICollidable
   (get-bounding-box [this]
-    (collisions/create-bounding-box pos cell-size)))
+    (create-box pos cell-size)))
 
 (defrecord Bomb [pos size collides timer-value]
-  collisions/ICollidable
+  ICollidable
   (get-bounding-box [this]
-    (collisions/create-bounding-box pos size)))
+    (create-box pos size)))
 
 (defrecord Player [pos size direction speed powerups]
-  collisions/ICollidable
+  ICollidable
   (get-bounding-box [this]
-    (collisions/create-bounding-box pos size)))
+    (create-box pos size)))
 
 (defrecord World [player cells bombs])
 
@@ -58,25 +43,7 @@
      (+ row-i (/ (second cell-size) 2))]
     cell-type))
 
-(defn- create-bomb [pos]
-  (->Bomb
-    pos
-    bomb-size
-    false
-    bomb-detonate-seconds))
-
-(defn- create-player
-  "Creates player record where
-  @pos - [x y]
-  @size - [w h]"
-  [pos direction speed powerups]
-  (->Player pos
-            player-size
-            direction
-            speed
-            powerups))
-
-(defn- gen-map-cells
+(defn- generate-cells
   "Generates random map cells.
 Example:
   (gen-map-cells 4 2) will generate next map
@@ -113,17 +80,20 @@ Example:
       ; Bottom obstacle row
       [(map #(create-cell :boundary % total-height) (range total-width))])))
 
-(defn create
-  "Creates world instance"
-  []
-  (->World
-    (create-player [1.5 1.5]
-                   :bottom
-                   0.06
-                   {:lives 4})
-    (gen-map-cells 4 9)
-    []))
+(defn- create-bomb [pos]
+  (->Bomb
+    pos
+    bomb-size
+    false
+    bomb-detonate-seconds))
 
+(defn- create-player
+  [pos direction speed powerups]
+  (->Player pos
+            player-size
+            direction
+            speed
+            powerups))
 
 ;; Updaters
 
@@ -141,7 +111,22 @@ Example:
     (swap! bomb-atom update-in [:timer-value] - (/ delta-time 1000)))
   (assoc world :bombs (remove #(neg? (:timer-value (deref %))) bombs)))
 
+
+;; Public API
+
+(defn create
+  "Creates world instance"
+  []
+  (->World
+    (create-player [1.5 1.5]
+                   :bottom
+                   0.06
+                   {:lives 4})
+    (generate-cells 4 9)
+    []))
+
 (defn step
+  ""
   [world delta-time]
   (-> world
       (update-bombs-collides!)
@@ -150,7 +135,6 @@ Example:
 (defn move-player
   "Moves player inside world in given direction, returns new world"
   [{:keys [player] :as world} direction]
-  {:pre (contains? directions direction)}
   (let [new-player (-> player
                        (update-in [:pos] transpose direction (:speed player))
                        (assoc :direction direction))
@@ -164,6 +148,7 @@ Example:
       world)))
 
 (defn place-bomb
+  "Spawns new bomb at player's position, returns new world"
   [world]
   (let [bomb-pos (get-in world [:player :pos])
         bomb (create-bomb bomb-pos)]

@@ -5,7 +5,8 @@
   (get-bounding-box [this]))
 
 
-(defn create-bounding-box
+(defn create-box
+  "Creates bounding object box"
   [center-point size]
   {:pos (map
           (fn [dim-i]
