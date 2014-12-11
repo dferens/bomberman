@@ -40,8 +40,9 @@
 
 (defn- bombs-view [world-atom]
   [:div.bombs
-   (for [{:keys [pos size]} (:bombs @world-atom)
-         :let [[x y] (map units->pixels pos)
+   (for [bomb-atom (:bombs @world-atom)
+         :let [{pos :pos size :size} @bomb-atom
+               [x y] (map units->pixels pos)
                [width height] (map units->pixels size)]]
      [:div.bomb
       {:style {:top (- y (/ height 2))

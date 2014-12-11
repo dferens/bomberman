@@ -6,13 +6,6 @@
 
 
 (defn create-bounding-box
-  [center-x center-y width height]
-  {:pos [(- center-x (/ width 2))
-         (- center-y (/ height 2))]
-   :size [width
-          height]})
-
-(defn create-bounding-box
   [center-point size]
   {:pos (map
           (fn [dim-i]

@@ -13,6 +13,7 @@
    :none [0 0]})
 
 (def cell-types
+  "Available cell types"
   #{:empty
     :obstacle
     :boundary})
@@ -20,6 +21,7 @@
 (def cell-size [1 1])
 (def player-size [0.7 0.7])
 (def bomb-size [0.8 0.8])
+(def bomb-detonate-seconds 3)
 
 
 (defn- transpose
@@ -29,7 +31,6 @@
   (let [dxy (map (partial * speed) (directions direction))]
     (map + pos dxy)))
 
-
 ;; Data types
 
 (defrecord Cell [pos type]
@@ -37,7 +38,7 @@
   (get-bounding-box [this]
     (collisions/create-bounding-box pos cell-size)))
 
-(defrecord Bomb [pos size collides]
+(defrecord Bomb [pos size collides timer-value]
   collisions/ICollidable
   (get-bounding-box [this]
     (collisions/create-bounding-box pos size)))
@@ -61,7 +62,8 @@
   (->Bomb
     pos
     bomb-size
-    false))
+    false
+    bomb-detonate-seconds))
 
 (defn- create-player
   "Creates player record where
@@ -125,26 +127,25 @@ Example:
 
 ;; Updaters
 
-(defn- update-bombs-collides
-  [{:keys [bombs player] :as world}]
-  (loop [bomb-i 0
-         old-world world]
-    (let [bomb (get bombs bomb-i)]
-      (if (nil? bomb)
-        old-world
-        (if (and (false? (:collides bomb))
-                 (not (collides? player bomb)))
-          (recur
-            (inc bomb-i)
-            (update-in old-world [:bombs bomb-i :collides] not))
-          (recur
-            (inc bomb-i)
-            old-world))))))
+(defn- update-bombs-collides!
+  [world]
+  (doseq [bomb-atom (:bombs world)]
+    (if (and (not (:collides @bomb-atom))
+             (not (collides? (:player world) @bomb-atom)))
+      (swap! bomb-atom assoc :collides true)))
+  world)
+
+(defn- update-bombs-timers!
+  [{bombs :bombs :as world} delta-time]
+  (doseq [bomb-atom bombs]
+    (swap! bomb-atom update-in [:timer-value] - (/ delta-time 1000)))
+  (assoc world :bombs (remove #(neg? (:timer-value (deref %))) bombs)))
 
 (defn step
   [world delta-time]
   (-> world
-      (update-bombs-collides)))
+      (update-bombs-collides!)
+      (update-bombs-timers! delta-time)))
 
 (defn move-player
   "Moves player inside world in given direction, returns new world"
@@ -153,7 +154,7 @@ Example:
   (let [new-player (-> player
                        (update-in [:pos] transpose direction (:speed player))
                        (assoc :direction direction))
-        bombs (filter :collides (:bombs world))
+        bombs (filter :collides (map deref (:bombs world)))
         cells (->>(apply concat (:cells world))
                   (filter #(not= :empty (:type %))))
         bodies (->> (concat bombs cells)
@@ -166,4 +167,4 @@ Example:
   [world]
   (let [bomb-pos (get-in world [:player :pos])
         bomb (create-bomb bomb-pos)]
-    (update-in world [:bombs] conj bomb)))
+    (update-in world [:bombs] conj (atom bomb))))
