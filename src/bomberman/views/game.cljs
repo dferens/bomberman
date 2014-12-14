@@ -1,6 +1,7 @@
 (ns bomberman.views.game
-  (:require [cljs.core.async :refer [<! >! timeout chan put!]]
-            [reagent.core :as reagent]
+  (:require [om.core :as om :include-macros true]
+            [sablono.core :refer-macros [html]]
+            [cljs.core.async :refer [<! >! timeout chan put!]]
             [jayq.util :refer [log]]
             [jayq.core :refer [$ bind on find]]
             [bomberman.game])
@@ -28,95 +29,105 @@
 
 ;; Views
 
-(defn- player-view [world-atom]
-  (let [{pos :pos} (:player @world-atom)
-        [x y] (map units->pixels pos)
-        [width height] (map units->pixels [1 1])]
-    [:div.player
-     {:style {:top y
-              :left x
-              :width width
-              :height height}}]))
+(defn- player-view [{pos :pos}]
+  (om/component
+    (let [[x y] (map units->pixels pos)
+         [width height] (map units->pixels [1 1])]
+      (html
+        [:div.player
+         {:style {:top y
+                  :left x
+                  :width width
+                  :height height}}]))))
 
+(defn- creep-view [{pos :pos}]
+  (om/component
+    (let [[x y] (map units->pixels pos)
+          [width height] (map units->pixels [1 1])]
+      (html
+        [:div.creep
+         {:style {:top y
+                  :left x
+                  :width width
+                  :height height}}]))))
 
-(defn- board-view [world-atom]
-  (let [{:keys [cells creeps]} @world-atom]
-    [:div.board
-     [player-view world-atom]
+(defn- row-view [row]
+  (om/component
+    (html
+      [:div.board-row
+       (for [cell row
+             :let [cell-type (or (:type cell) :empty)]]
+         [:div.cell {:class (name cell-type)}])])))
 
-     (for [creep-i (range (count creeps))
-           :let [{creep-pos :pos} (nth creeps creep-i)
-                 [x y] (map units->pixels creep-pos)
-                 [width height] (map units->pixels [1 1])]]
-       ^{:key creep-i}
-       [:div.creep
-        {:style {:top y
-                 :left x
-                 :width width
-                 :height height}}])
+(defn- stats-view [player]
+  (om/component
+    (html
+      [:div.header
+       [:div.lives "Lives: " (get-in player [:powerups :lives])]
+       [:div.powerups]])))
 
-     (for [row-i (range (count cells))
-           :let [row (nth cells row-i)]]
-       ^{:key row-i}
-       [:div.board-row
-        (for [col-i (range (count row))
-              :let [cell (nth row col-i)
-                    cell-type (or (:type cell) :empty)]]
-          ^{:key col-i} [:div.cell {:class (name cell-type)}])])]))
+(defn game-view [app owner]
+  (reify
+    om/IInitState
+    (init-state [_]
+      {:game (bomberman.game/create)
+       :world-state nil
+       :buttons-stack (sorted-set)})
 
-(defn- stats-view [world-atom]
-  (let [player (:player @world-atom)]
-    [:div.header
-     [:div.lives "Lives: " (get-in player [:powerups :lives])]
-     [:div.powerups]]))
+    om/IWillMount
+    (will-mount [this]
 
+      (let [game (om/get-state owner :game)]
+        (go
+          (loop [response (<! (:responses-chan game))]
+            (if (= (:topic response) :world-update)
+              (om/set-state! owner :world-state (:world-state response)))
+            (recur (<! (:responses-chan game)))))
 
-(defn- init-game []
-  (let [delta-time-ms 20
-        game (bomberman.game/create)
-        world-atom (reagent/atom nil)
-        move-buttons-stack (atom (sorted-set))]
+        (go
+          (loop [_ (<! (timeout 20))]
+            (let [pressed-buttons (om/get-state owner :buttons-stack)]
+              (if-not (empty? pressed-buttons)
+                (bomberman.game/move! game (last pressed-buttons))))
+            (bomberman.game/step! game 20)
+            (recur (<! (timeout 20)))))
 
-    ; Process responses
-    (go
-      (loop [response (<! (:responses-chan game))]
-        (if (= (:topic response) :world-update)
-          (reset! world-atom (:world-state response)))
-        (recur (<! (:responses-chan game)))))
+        (on ($ "body") :keydown
+            (fn [event]
+              (let [button (keycodes (.-keyCode event))]
+                (if-not (nil? button)
+                  (cond
+                    (contains? move-buttons button)
+                    (om/update-state! owner :buttons-stack #(conj % button))
 
-    ; Setup world steps
-    (go
-      (loop [_ (<! (timeout delta-time-ms))]
-        (if-not (empty? @move-buttons-stack)
-          (bomberman.game/move! game (last @move-buttons-stack)))
-        (bomberman.game/step! game delta-time-ms)
-        (recur (<! (timeout delta-time-ms)))))
+                    (= button place-bomb-button)
+                    (bomberman.game/place-bomb! game)
 
-    ; Setup bindings
-    (on ($ "body") :keydown
-        (fn [event]
-          (let [button (keycodes (.-keyCode event))]
-            (if-not (nil? button)
-              (cond
-                (contains? move-buttons button) (swap! move-buttons-stack conj button)
-                (= button place-bomb-button) (bomberman.game/place-bomb! game)
-                :else (log (str "Key pressed:" (.-keyCode event))))))))
-    (on ($ "body") :keyup
-        (fn [event]
-          (let [button (keycodes (.-keyCode event))]
-            (if (contains? @move-buttons-stack button)
-              (swap! move-buttons-stack disj button)))))
+                    :else (log (str "Key pressed:" (.-keyCode event))))))))
 
-    ; Send init command
-    (bomberman.game/init! game)
+        (on ($ "body") :keyup
+            (fn [event]
+              (let [button (keycodes (.-keyCode event))
+                    pressed-buttons (om/get-state owner :buttons-stack)]
+                (if (contains? pressed-buttons button)
+                  (om/update-state! owner :buttons-stack #(disj % button))))))))
 
-    [game world-atom]))
+    om/IDidMount
+    (did-mount [this]
+      (bomberman.game/init! (om/get-state owner :game)))
 
-(defn game []
-  (let [[_ world-atom] (init-game)]
-    (fn []
-      [:div.game-page
-       [:div.window
-        [stats-view world-atom]
-        [board-view world-atom]
-        [:div.footer]]])))
+    om/IWillUnmount
+    (will-unmount [this]
+      ; TODO: remove callbacks
+      (log "unmounted"))
+
+    om/IRenderState
+    (render-state [this {world :world-state}]
+      (html
+        [:div.game-page
+         [:div.window
+          (om/build stats-view (:player world))
+          [:div.board
+           (om/build player-view (:player world))
+           (om/build-all creep-view (:creeps world))
+           (om/build-all row-view (:cells world))]]]))))

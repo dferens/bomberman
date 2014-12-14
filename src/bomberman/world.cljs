@@ -166,7 +166,9 @@ Example:
         world (->World player (generate-cells 3 3) #{} [])]
     (-> world
         (spawn-creep [3 3])
-        (spawn-creep [3 5]))))
+        (spawn-creep [3 5])
+        (spawn-creep [5 3])
+        (spawn-creep [5 5]))))
 
 (defn step
   ""

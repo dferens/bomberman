@@ -1,6 +1,10 @@
-(ns bomberman.views.settings)
+(ns bomberman.views.settings
+  (:require [om.core :as om :include-macros true]
+            [sablono.core :refer-macros [html]]))
 
 
-(defn settings []
-  [:div
-   [:p "Settings page"]])
+(defn settings-view [app]
+  (om/component
+    (html
+      [:div
+       [:p "Settings page"]])))

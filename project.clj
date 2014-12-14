@@ -6,7 +6,8 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/clojurescript "0.0-2311"]
                  [figwheel "0.1.4-SNAPSHOT"]
-                 [reagent "0.4.2"]
+                 [om "0.8.0-beta3"]
+                 [sablono "0.2.22"]
                  [jayq "2.5.2"]]
 
   :plugins [[lein-cljsbuild "1.0.3"]
@@ -15,7 +16,6 @@
             [lein-bower "0.5.1"]]
 
   :bower-dependencies [[jquery "*"]
-                       [react "0.9.0"]
                        [flexboxgrid "5.0.0"]]
 
   :source-paths ["src"]

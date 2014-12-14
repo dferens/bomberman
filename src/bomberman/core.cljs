@@ -1,5 +1,6 @@
 (ns bomberman.core
-  (:require [reagent.core :as reagent :refer [atom]]
+  (:require [om.core :as om  :include-macros true]
+            [sablono.core :refer-macros [html]]
             [figwheel.client :as fw :include-macros true]
             [jayq.core :refer [$]]
             [bomberman.views.menu]
@@ -7,31 +8,35 @@
             [bomberman.views.highscores]
             [bomberman.views.settings]))
 
+(defn- create-app-state []
+  {:current-page :menu
+   :pages [[:game "New game"]
+           [:highscores "Highscores"]
+           [:settings "Settings"]]})
 
-(defn- create-route []
-  (atom :menu))
 
-(defn app []
-  (let [pages [[:game "New game"]
-               [:highscores "Highscores"]
-               [:settings "Settings"]]
-        route (create-route)]
-    (fn []
-      [:div.bomberman-game
-       (case @route
-         :menu [bomberman.views.menu/menu {:route route :pages pages}]
-         :game [bomberman.views.game/game ]
-         :highscores [bomberman.views.highscores/highscores]
-         :settings [bomberman.views.settings/settings])])))
+(defonce app-state (atom (create-app-state)))
 
-(defn start []
-  (let [container-selector ".bomberman-container"]
-    (.each ($ container-selector)
-      #(reagent/render-component [app] %2))))
-
-(defn- stop []
+(defn- start []
   (.each ($ ".bomberman-container")
-    #(reagent/unmount-component-at-node %2)))
+    (fn [_ element]
+      (om/root
+        (fn [app owner]
+          (reify
+            om/IRender
+            (render [_]
+              (html
+                [:div.bomberman-game
+                 (om/build
+                   (case (:current-page app)
+                     :menu bomberman.views.menu/menu-view
+                     :game bomberman.views.game/game-view
+                     :settings bomberman.views.settings/settings-view
+                     :highscores bomberman.views.highscores/highscores-view)
+                   app)]))))
+        app-state
+        {:target element}))))
 
+
+(fw/watch-and-reload)
 (start)
-(fw/watch-and-reload :jsload-callback #(do (stop) (start)))
