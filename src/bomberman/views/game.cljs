@@ -4,7 +4,7 @@
             [cljs.core.async :refer [<! >! timeout chan put!]]
             [jayq.util :refer [log]]
             [jayq.core :refer [$ on off]]
-            [bomberman.game])
+            [bomberman.world :as world])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
 
@@ -70,49 +70,37 @@
   (reify
     om/IInitState
     (init-state [_]
-      {:game (bomberman.game/create)
-       :world-state nil
+      {:world (bomberman.world/create)
        :buttons-stack (sorted-set)})
 
     om/IWillMount
     (will-mount [this]
+      (go
+        (loop [_ (<! (timeout 20))]
+          (let [pressed-buttons (om/get-state owner :buttons-stack)]
+            (if-not (empty? pressed-buttons)
+              (om/update-state! owner :world
+                #(world/move-player % (last pressed-buttons)))))
+          (om/update-state! owner :world #(world/step % 20))
+          (recur (<! (timeout 20)))))
 
-      (let [game (om/get-state owner :game)]
-        (go
-          (loop [response (<! (:responses-chan game))]
-            (if (= (:topic response) :world-update)
-              (om/set-state! owner :world-state (:world-state response)))
-            (recur (<! (:responses-chan game)))))
+      (on ($ "body") :keydown
+          (fn [event]
+            (let [button (keycodes (.-keyCode event))]
+              (if-not (nil? button)
+                (cond
+                  (contains? move-buttons button)
+                  (om/update-state! owner :buttons-stack #(conj % button))
 
-        (go
-          (loop [_ (<! (timeout 20))]
-            (let [pressed-buttons (om/get-state owner :buttons-stack)]
-              (if-not (empty? pressed-buttons)
-                (bomberman.game/move! game (last pressed-buttons))))
-            (bomberman.game/step! game 20)
-            (recur (<! (timeout 20)))))
+                  (= button place-bomb-button)
+                  (om/update-state! owner :world world/place-bomb))))))
 
-        (on ($ "body") :keydown
-            (fn [event]
-              (let [button (keycodes (.-keyCode event))]
-                (if-not (nil? button)
-                  (cond
-                    (contains? move-buttons button)
-                    (om/update-state! owner :buttons-stack #(conj % button))
-
-                    (= button place-bomb-button)
-                    (bomberman.game/place-bomb! game))))))
-
-        (on ($ "body") :keyup
-            (fn [event]
-              (let [button (keycodes (.-keyCode event))
-                    pressed-buttons (om/get-state owner :buttons-stack)]
-                (if (contains? pressed-buttons button)
-                  (om/update-state! owner :buttons-stack #(disj % button))))))))
-
-    om/IDidMount
-    (did-mount [this]
-      (bomberman.game/init! (om/get-state owner :game)))
+      (on ($ "body") :keyup
+          (fn [event]
+            (let [button (keycodes (.-keyCode event))
+                  pressed-buttons (om/get-state owner :buttons-stack)]
+              (if (contains? pressed-buttons button)
+                (om/update-state! owner :buttons-stack #(disj % button)))))))
 
     om/IWillUnmount
     (will-unmount [this]
@@ -120,7 +108,7 @@
       (off ($ "body") :keyup))
 
     om/IRenderState
-    (render-state [this {world :world-state}]
+    (render-state [this {world :world}]
       (html
         [:div.game-page
          [:div.window

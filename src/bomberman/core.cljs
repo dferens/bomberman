@@ -22,18 +22,16 @@
     (fn [_ element]
       (om/root
         (fn [app owner]
-          (reify
-            om/IRender
-            (render [_]
-              (html
-                [:div.bomberman-game
-                 (om/build
-                   (case (:current-page app)
-                     :menu bomberman.views.menu/menu-view
-                     :game bomberman.views.game/game-view
-                     :settings bomberman.views.settings/settings-view
-                     :highscores bomberman.views.highscores/highscores-view)
-                   app)]))))
+          (om/component
+            (html
+              [:div.bomberman-game
+               (om/build
+                 (case (:current-page app)
+                   :menu bomberman.views.menu/menu-view
+                   :game bomberman.views.game/game-view
+                   :settings bomberman.views.settings/settings-view
+                   :highscores bomberman.views.highscores/highscores-view)
+                 app)])))
         app-state
         {:target element}))))
 
