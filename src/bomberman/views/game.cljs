@@ -38,10 +38,23 @@
               :width width
               :height height}}]))
 
+
 (defn- board-view [world-atom]
-  (let [cells (:cells @world-atom)]
+  (let [{:keys [cells creeps]} @world-atom]
     [:div.board
      [player-view world-atom]
+
+     (for [creep-i (range (count creeps))
+           :let [{creep-pos :pos} (nth creeps creep-i)
+                 [x y] (map units->pixels creep-pos)
+                 [width height] (map units->pixels [1 1])]]
+       ^{:key creep-i}
+       [:div.creep
+        {:style {:top y
+                 :left x
+                 :width width
+                 :height height}}])
+
      (for [row-i (range (count cells))
            :let [row (nth cells row-i)]]
        ^{:key row-i}
