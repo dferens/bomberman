@@ -29,37 +29,27 @@
 ;; Views
 
 (defn- player-view [world-atom]
-  (let [{:keys [pos size]} (:player @world-atom)
+  (let [{pos :pos} (:player @world-atom)
         [x y] (map units->pixels pos)
-        [width height] (map units->pixels size)]
+        [width height] (map units->pixels [1 1])]
     [:div.player
-     {:style {:top (- y (/ height 2))
-              :left (- x (/ width 2))
+     {:style {:top y
+              :left x
               :width width
               :height height}}]))
-
-(defn- bombs-view [world-atom]
-  [:div.bombs
-   (for [bomb-atom (:bombs @world-atom)
-         :let [{pos :pos size :size} @bomb-atom
-               [x y] (map units->pixels pos)
-               [width height] (map units->pixels size)]]
-     [:div.bomb
-      {:style {:top (- y (/ height 2))
-               :left (- x (/ width 2))
-               :width width
-               :height height}}])])
 
 (defn- board-view [world-atom]
   (let [cells (:cells @world-atom)]
     [:div.board
      [player-view world-atom]
-     [bombs-view world-atom]
-     (for [row-i (range (count cells))]
+     (for [row-i (range (count cells))
+           :let [row (nth cells row-i)]]
        ^{:key row-i}
        [:div.board-row
-        (for [{:keys [x type]} (nth cells row-i)]
-          ^{:key x} [:div.cell {:class (name type)}])])]))
+        (for [col-i (range (count row))
+              :let [cell (nth row col-i)
+                    cell-type (or (:type cell) :empty)]]
+          ^{:key col-i} [:div.cell {:class (name cell-type)}])])]))
 
 (defn- stats-view [world-atom]
   (let [player (:player @world-atom)]

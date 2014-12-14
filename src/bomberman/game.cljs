@@ -23,7 +23,6 @@
         world-atom (atom nil)]
     (go
       (loop [command (<! commands-chan)]
-
         (case (:topic command)
           :init (reset! world-atom (bomberman.world/create))
           :move (swap! world-atom bomberman.world/move-player (:direction command))
@@ -32,7 +31,6 @@
                   (swap! world-atom bomberman.world/step (:delta-time command))
                   (put! responses-chan {:topic :world-update
                                         :world-state @world-atom})))
-
         (recur (<! commands-chan))))
     (->Game commands-chan responses-chan)))
 
