@@ -29,7 +29,7 @@
 
 ;; Views
 
-(defn- player-view [{pos :pos}]
+(defn- player-view [{pos :pos} owner]
   (om/component
     (let [[x y] (map units->pixels pos)
          [width height] (map units->pixels [1 1])]
@@ -40,24 +40,40 @@
                   :width width
                   :height height}}]))))
 
-(defn- creep-view [{pos :pos}]
+(defn- creeps-view [creeps owner]
   (om/component
-    (let [[x y] (map units->pixels pos)
-          [width height] (map units->pixels [1 1])]
-      (html
-        [:div.creep
-         {:style {:top y
-                  :left x
-                  :width width
-                  :height height}}]))))
+    (html
+      [:div.creeps
+       (for [creep-i (range (count creeps))
+             :let [{pos :pos} (nth creeps creep-i)]]
+         (let [[x y] (map units->pixels pos)
+               [width height] (map units->pixels [1 1])]
+           [:div.creep
+            {:key creep-i
+             :style {:top y
+                     :left x
+                     :width width
+                     :height height}}]))])))
+
+(defn- cell-view [cell]
+  (om/component
+    (html
+      [:div.cell {:class (name (or (:type cell) :empty))}])))
 
 (defn- row-view [row]
   (om/component
     (html
       [:div.board-row
-       (for [cell row
-             :let [cell-type (or (:type cell) :empty)]]
-         [:div.cell {:class (name cell-type)}])])))
+       (for [cell-i (range (count row))]
+         (om/build cell-view (nth row cell-i) {:react-key cell-i}))])))
+
+(defn- rows-view [rows owner]
+  (om/component
+    (html
+      [:div.board-rows
+       (for [row-i (range (count rows))
+             :let [row (nth rows row-i)]]
+         (om/build row-view row {:react-key row-i}))])))
 
 (defn- stats-view [player]
   (om/component
@@ -115,5 +131,5 @@
           (om/build stats-view (:player world))
           [:div.board
            (om/build player-view (:player world))
-           (om/build-all creep-view (:creeps world))
-           (om/build-all row-view (:cells world))]]]))))
+           (om/build creeps-view (:creeps world))
+           (om/build rows-view (:cells world))]]]))))
