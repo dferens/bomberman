@@ -37,6 +37,11 @@
         app-state
         {:target element}))))
 
+(defn- stop []
+  (.each
+    ($ ".bomberman-container")
+    (fn [_ element]
+      (om/detach-root element))))
 
-(fw/watch-and-reload)
+(fw/watch-and-reload :jsload-callback #(do (stop) (start)))
 (start)

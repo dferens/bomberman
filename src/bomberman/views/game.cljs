@@ -3,7 +3,7 @@
             [sablono.core :refer-macros [html]]
             [cljs.core.async :refer [<! >! timeout chan put!]]
             [jayq.util :refer [log]]
-            [jayq.core :refer [$ bind on find]]
+            [jayq.core :refer [$ on off]]
             [bomberman.game])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
@@ -101,9 +101,7 @@
                     (om/update-state! owner :buttons-stack #(conj % button))
 
                     (= button place-bomb-button)
-                    (bomberman.game/place-bomb! game)
-
-                    :else (log (str "Key pressed:" (.-keyCode event))))))))
+                    (bomberman.game/place-bomb! game))))))
 
         (on ($ "body") :keyup
             (fn [event]
@@ -118,8 +116,8 @@
 
     om/IWillUnmount
     (will-unmount [this]
-      ; TODO: remove callbacks
-      (log "unmounted"))
+      (off ($ "body") :keydown)
+      (off ($ "body") :keyup))
 
     om/IRenderState
     (render-state [this {world :world-state}]
