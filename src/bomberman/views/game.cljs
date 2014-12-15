@@ -10,7 +10,7 @@
 
 ;; Constants
 
-(def pixels-per-unit 50)
+(def pixels-per-unit 16)
 
 (def keycodes
   "Maps concrete keyboard buttons to abstract buttons"
@@ -31,14 +31,13 @@
 
 (defn- player-view [{pos :pos} owner]
   (om/component
-    (let [[x y] (map units->pixels pos)
-         [width height] (map units->pixels [1 1])]
+    (let [[center-x center-y] (map units->pixels (map #(+ 0.5 %) pos))]
       (html
         [:div.player
-         {:style {:top y
-                  :left x
-                  :width width
-                  :height height}}]))))
+         {:style {:top (- center-y (/ 23 2))
+                  :left (- center-x (/ 23 2))
+                  :width 23
+                  :height 23}}]))))
 
 (defn- creeps-view [creeps owner]
   (om/component
@@ -58,7 +57,9 @@
 (defn- cell-view [cell]
   (om/component
     (html
-      [:div.cell {:class (name (or (:type cell) :empty))}])))
+      [:div.cell
+       (if-not (nil? cell)
+         [:div {:class (name (:type cell))}])])))
 
 (defn- row-view [row]
   (om/component

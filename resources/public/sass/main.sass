@@ -46,23 +46,27 @@ body
 
         .bomb
           display: inline-block
-          background-color: red
-          width: 50px
-          height: 50px
+          width: 16px
+          height: 16px
           z-index: 1
+          background-image: url(../img/tiles.png)
 
         .player
           position: absolute
           display: inline-block
-          background-color: green
-          width: 50px
-          height: 50px
+          width: 23px
+          height: 23px
           z-index: 2
+          background-image: url(../img/tiles.png)
+          background-position: 0px 0px
 
         .creep
+          width: 16px
+          height: 16px
           position: absolute
-          background-color: yellow
           z-index: 1
+          background-image: url(../img/tiles.png)
+          background-position: 0px -341px
 
         .board-row
           text-align: left
@@ -70,15 +74,21 @@ body
           overflow: hidden
 
           .cell
-            width: 50px
-            height: 50px
+            width: 16px
+            height: 16px
+            background-image: url(../img/tiles.png)
+            background-repeat: no-repeat
+            background-position: -367px -110px
             display: inline-block
 
-            &.empty
-              background-color: #ddd
+            .obstacle
+              width: 100%
+              height: 100%
+              background-image: url(../img/tiles.png)
+              background-position: -342px 0px
 
-            &.boundary
-              background-color: black
-
-            &.obstacle
-              background-color: grey
+            .bomb
+              width: 100%
+              height: 100%
+              background-image: url(../img/tiles.png)
+              background-position: -486px 0px

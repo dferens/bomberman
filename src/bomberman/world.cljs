@@ -163,7 +163,7 @@ Example:
   "Creates world instance"
   []
   (let [player (create-player [1 1] :bottom 0.06 {:lives 4})
-        world (->World player (generate-cells 3 3) #{} [])]
+        world (->World player (generate-cells 10 15) #{} [])]
     (-> world
         (spawn-creep [3 3])
         (spawn-creep [3 5])
