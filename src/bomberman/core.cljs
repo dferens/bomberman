@@ -42,4 +42,5 @@
       (om/detach-root element))))
 
 (fw/watch-and-reload :jsload-callback #(do (stop) (start)))
+(enable-console-print!)
 (start)

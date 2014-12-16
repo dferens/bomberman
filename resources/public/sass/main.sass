@@ -81,14 +81,17 @@ body
             background-position: -367px -110px
             display: inline-block
 
-            .obstacle
+            > div
               width: 100%
               height: 100%
               background-image: url(../img/tiles.png)
-              background-position: -342px 0px
 
-            .bomb
-              width: 100%
-              height: 100%
-              background-image: url(../img/tiles.png)
-              background-position: -486px 0px
+              &.obstacle
+                background-position: -342px 0px
+
+              &.bomb
+                background-position: -486px 0px
+
+              &.flame
+                background-position: -422px -32px
+
