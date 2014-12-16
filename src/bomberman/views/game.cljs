@@ -59,7 +59,10 @@
     (html
       [:div.cell
        (if-not (nil? cell)
-         [:div {:class (name (:type cell))}])])))
+         [:div
+          {:class (name (:type cell))}
+          (when (= :bomb (:type cell))
+            [:span (inc (int (:timer-value cell)))])])])))
 
 (defn- row-view [row]
   (om/component

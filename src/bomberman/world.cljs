@@ -86,10 +86,6 @@ Example:
   [world [cell-x cell-y]]
   (-> world :cells (nth cell-y) (nth cell-x)))
 
-;(defn get-next-pos [pos direction]
-;  (let [delta-cell (map #(* % 0.5) (directions direction))]
-;    (map Math/round (map + pos delta-cell))))
-
 (defn- get-next-pos [pos direction]
   (let [center-pos (map (partial + 0.5) pos)
         corner-dxdy (map (partial * 0.5) (directions direction))
@@ -108,9 +104,9 @@ Example:
     (if (or (nil? target-cell)
             (false? (:collides? target-cell)))
       (if (horizontal? direction)
-        [new-x (Math/round new-y)]
-        [(Math/round new-x) new-y])
-      nil)))
+        [nil [new-x (Math/round new-y)]]
+        [nil [(Math/round new-x) new-y]])
+      [:obstacle nil])))
 
 (defn touches-player?
   [world cell-pos]
@@ -120,6 +116,9 @@ Example:
          (< (- cell-y 1) player-y (+ cell-y 1)))))
 
 ;; Updaters
+
+(declare detonate-bomb)
+(declare remove-flame)
 
 (defn- update-bombs-collides
   [world]
@@ -134,33 +133,18 @@ Example:
     world
     (:bombs world)))
 
-(defn- get-flame-cells [world cell-pos radius]
+(defn- calc-flame-cells [world cell-pos radius]
   (concat
     [cell-pos]
-    (let [free? #(not= :obstacle (:type (get-cell world %)))]
+    (let [pos-free? #(not= :obstacle (:type (get-cell world %)))]
       (for [direction (keys directions)
             i (range 1 radius)
             :let [cell-traverser #(map + % (directions direction))
                   cell-pos (nth (iterate cell-traverser cell-pos) i)]
-            :while (and (free? cell-pos)
+            :while (and (pos-free? cell-pos)
                         (every? #(>= % 0) cell-pos))
-            :when (free? cell-pos)]
+            :when (pos-free? cell-pos)]
         cell-pos))))
-
-(defn- add-flames [world center-pos radius]
-  (reduce
-    (fn [world [x y]]
-      (-> world
-          (assoc-in [:cells y x] (create-flame-cell))
-          (update-in [:flames] conj [x y])))
-    world
-    (get-flame-cells world center-pos radius)))
-
-(defn- detonate-bomb
-  [world [bomb-x bomb-y]]
-  (-> world
-      (add-flames [bomb-x bomb-y] 3)
-      (update-in [:bombs] disj [bomb-x bomb-y])))
 
 (defn- update-bombs-timers
   [world delta-time]
@@ -180,7 +164,7 @@ Example:
   (reduce
     (fn [world creep-i]
       (let [{pos :pos direction :direction} (get-in world [:creeps creep-i])
-            new-pos (try-move world pos creep-speed direction)
+            [_ new-pos] (try-move world pos creep-speed direction)
             touches-player (touches-player? world new-pos)]
         (if (or (nil? new-pos) touches-player)
           (let [new-direction (rand-direction (dissoc directions direction))]
@@ -198,20 +182,68 @@ Example:
             current-lifetime (:lifetime (get-cell world flame-pos))
             new-lifetime (- current-lifetime (/ delta-time 1000))]
         (if (neg? new-lifetime)
-          (-> world
-              (assoc-in [:cells flame-y flame-x] nil)
-              (update-in [:flames] disj [flame-x flame-y]))
+          (remove-flame world flame-pos)
           (assoc-in world [:cells flame-y flame-x :lifetime] new-lifetime))))
     world
     (:flames world)))
 
-(defn- spawn-creep
+;; Public API
+
+(defn step
+  ""
+  [world delta-time]
+  (-> world
+      (update-bombs-collides)
+      (update-bombs-timers delta-time)
+      (update-flames delta-time)
+      (update-creeps delta-time)))
+
+(defn move-player
+  "Moves player inside world in given direction, returns new world"
+  [{{:keys [speed pos]} :player :as world} direction]
+  (let [[obstacle-type new-pos] (try-move world pos speed direction)]
+    (case obstacle-type
+      nil (assoc-in world [:player :pos] new-pos)
+      :obstacle world
+      :flame )))
+
+(defn place-bomb
+  "Spawns new bomb at player's position, returns new world"
+  [{player :player :as world}]
+  (let [[col-i row-i] (get-pos-cell (:pos player))]
+    (-> world
+      (update-in [:bombs] conj [col-i row-i])
+      (assoc-in [:cells row-i col-i] (create-bomb-cell)))))
+
+(defn spawn-creep
+  "Adds new creep at given position, returns new world"
   [world pos]
   (let [creep-cell (get-pos-cell pos)
         creep (->Creep creep-cell (rand-direction))]
     (update-in world [:creeps] conj creep)))
 
-;; Public API
+(defn add-flames [world center-pos radius]
+  "Adds bomb explosion flames at given position, returns new world"
+  (reduce
+    (fn [world [x y]]
+      (-> world
+          (assoc-in [:cells y x] (create-flame-cell))
+          (update-in [:flames] conj [x y])))
+    world
+    (calc-flame-cells world center-pos radius)))
+
+(defn detonate-bomb
+  "Detonates existing bomb at given position, returns new world"
+  [world [bomb-x bomb-y]]
+  (-> world
+      (add-flames [bomb-x bomb-y] 3)
+      (update-in [:bombs] disj [bomb-x bomb-y])))
+
+(defn remove-flame
+  [world [flame-x flame-y]]
+  (-> world
+      (assoc-in [:cells flame-y flame-x] nil)
+      (update-in [:flames] disj [flame-x flame-y])))
 
 (defn create
   "Creates world instance"
@@ -223,29 +255,3 @@ Example:
         (spawn-creep [3 5])
         (spawn-creep [5 3])
         (spawn-creep [5 5]))))
-
-(defn step
-  ""
-  [world delta-time]
-  (-> world
-      (update-bombs-collides)
-      (update-bombs-timers delta-time)
-      (update-flames delta-time)
-      (update-creeps delta-time)))
-
-
-(defn move-player
-  "Moves player inside world in given direction, returns new world"
-  [{player :player :as world} direction]
-  (let [new-pos (try-move world (:pos player) (:speed player) direction)]
-    (if (not (nil? new-pos))
-      (assoc-in world [:player :pos] new-pos)
-      world)))
-
-(defn place-bomb
-  "Spawns new bomb at player's position, returns new world"
-  [{player :player :as world}]
-  (let [[col-i row-i] (get-pos-cell (:pos player))]
-    (-> world
-      (update-in [:bombs] conj [col-i row-i])
-      (assoc-in [:cells row-i col-i] (create-bomb-cell)))))
