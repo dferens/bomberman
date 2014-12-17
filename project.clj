@@ -15,7 +15,7 @@
             [lein-figwheel "0.1.4-SNAPSHOT"]
             [lein-bower "0.5.1"]]
 
-  :bower-dependencies [[jquery "*"]
+  :bower-dependencies [[jquery "1.9"]
                        [flexboxgrid "5.0.0"]]
 
   :source-paths ["src"]
@@ -23,10 +23,17 @@
          :output-directory "resources/public/css"
          :output-extension "css"}
 
-  :cljsbuild {:builds [{:id "bomberman"
+  :cljsbuild {:builds [{:id "dev"
                         :source-paths ["src"]
                         :compiler {:output-to "resources/public/js/compiled/bomberman.js"
                                    :output-dir "resources/public/js/compiled/out"
                                    :optimizations :none
-                                   :source-map "resources/public/js/compiled/bomberman.js.map"}}]}
+                                   :source-map "resources/public/js/compiled/bomberman.js.map"}}
+                       {:id "release"
+                        :source-paths ["src"]
+                        :compiler {:output-to "main.js"
+                                   :optimizations :advanced
+                                   :pretty-print false
+                                   :preamble ["react/react.min.js"]
+                                   :externs ["react/externs/react.js" "./externs/jquery-1.9.js"]}}]}
   :figwheel {:css-dirs ["resources/public/css"]})
