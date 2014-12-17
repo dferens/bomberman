@@ -10,6 +10,9 @@
    :top [0 -1]
    :bottom [0 1]})
 
+(def obstacle-types
+  #{:obstacle :brick})
+
 (defn- rand-direction
   ([] (rand-direction directions))
   ([directions-map] (rand-nth (keys directions-map))))
@@ -26,8 +29,9 @@
 (defrecord Creep [pos direction])
 (defrecord World [player cells bombs creeps flames])
 
-(defn- create-obstacle-cell []
-  {:type :obstacle})
+(defn- create-obstacle-cell
+  ([] (create-obstacle-cell :obstacle))
+  ([type] {:type type}))
 
 (defn- create-bomb-cell []
   {:type :bomb
@@ -66,7 +70,9 @@ Example:
               (for [col-i (range inner-width)]
                 (if (and (odd? row-i) (odd? col-i))
                   (create-obstacle-cell)
-                  nil))
+                  (if (> (rand) 0.7)
+                    (create-obstacle-cell :brick)
+                    nil)))
               [(create-obstacle-cell)])))
 
         ; Bottom obstacle row
@@ -136,14 +142,13 @@ Example:
 (defn- calc-flame-cells [world cell-pos radius]
   (concat
     [cell-pos]
-    (let [pos-free? #(not= :obstacle (:type (get-cell world %)))]
+    (let []
       (for [direction (keys directions)
             i (range 1 radius)
             :let [cell-traverser #(map + % (directions direction))
                   cell-pos (nth (iterate cell-traverser cell-pos) i)]
-            :while (and (pos-free? cell-pos)
-                        (every? #(>= % 0) cell-pos))
-            :when (pos-free? cell-pos)]
+            :while (and (every? #(>= % 0) cell-pos)
+                        (not= :obstacle (:type (get-cell world cell-pos))))]
         cell-pos))))
 
 (defn- update-bombs-timers
